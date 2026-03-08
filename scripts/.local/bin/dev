@@ -20,31 +20,94 @@ show_help() {
     echo ""
 }
 
+ensure_environment() {
+    # Check if zsh is installed inside the devcontainer
+    if ! devcontainer exec bash -c 'command -v zsh >/dev/null 2>&1'; then
+        echo "First boot detected! Bootstrapping personal environment..."
+        
+        # 1. Grab the target user FIRST
+        local TARGET_USER=$(devcontainer exec bash -c 'whoami' | tr -d '\r')
+        
+        # 2. Only hunt for the container ID and inject sudo if we actually need it
+        if [ "$TARGET_USER" != "root" ]; then
+            echo "   -> User is '$TARGET_USER'. Searching for container ID to inject sudo..."
+            
+            # Robust ID Lookup: Try matching the exact devcontainer mount path label first
+            local CONTAINER_ID=$(docker ps -q --filter "label=devcontainer.local_folder=$PWD" | head -n 1)
+            
+            # Fallback: Find the first running container in this project's Compose network
+            if [ -z "$CONTAINER_ID" ]; then
+                local PROJECT_NAME="$(basename "$PWD")_devcontainer"
+                CONTAINER_ID=$(docker ps -q --filter "name=${PROJECT_NAME}" | head -n 1)
+            fi
+            
+            if [ -z "$CONTAINER_ID" ]; then
+                echo "   Error: Could not find the running container ID."
+                echo "   Skipping sudo injection. Your dotfiles script might fail if packages are missing."
+            else
+                echo "   -> Found Container ID: $CONTAINER_ID. Injecting privileges..."
+                local ROOT_PAYLOAD="
+                    if ! command -v sudo >/dev/null 2>&1; then
+                        if command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y sudo;
+                        elif command -v apk >/dev/null 2>&1; then apk add --no-cache sudo;
+                        elif command -v dnf >/dev/null 2>&1; then dnf install -y sudo;
+                        elif command -v pacman >/dev/null 2>&1; then pacman -Sy --noconfirm sudo;
+                        fi;
+                    fi;
+                    mkdir -p /etc/sudoers.d;
+                    echo '$TARGET_USER ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/$TARGET_USER;
+                    chmod 0440 /etc/sudoers.d/$TARGET_USER;
+                "
+                docker exec --user root "$CONTAINER_ID" bash -c "$ROOT_PAYLOAD"
+            fi
+        else
+            echo "   -> Container is already running as root. Skipping sudo injection."
+        fi
+        
+        echo "   -> Running universal dotfiles installer..."
+        devcontainer exec bash -c '/mnt/dotfiles/install-dev.sh'
+    fi
+}
+
 case "$1" in
     up)
         echo "Starting dev container..."
-        if devcontainer up; then
+        MY_MOUNTS=(--mount "type=bind,source=$HOME/dotfiles,target=/mnt/dotfiles")
+        if [ -n "$SSH_AUTH_SOCK" ]; then
+            # Removed ',readonly' to satisfy the strict CLI parser
+            MY_MOUNTS+=(--mount "type=bind,source=$SSH_AUTH_SOCK,target=/tmp/ssh-agent.socket")
+        fi
+
+        # 2. Pass the mounts to the CLI
+        if devcontainer up "${MY_MOUNTS[@]}"; then
             echo "Container started! Launching tmux..."
-            tmux new-session -A -s dev-session "devcontainer exec zsh"
+            ensure_environment
+            tmux new-session -A -s dev-session "devcontainer exec bash -c 'if ! command -v zsh >/dev/null 2>&1; then ~/dotfiles/install-dev.sh; fi; exec zsh'"
         else
             echo "Failed to start container."
         fi
         ;;
-        
     rebuild)
         echo "Rebuilding dev container..."
-        EXTRA_ARGS=""
         
-        # Check for the --no-cache flag
+        # 1. Handle arguments and mounts
+        EXTRA_ARGS=""
         if [[ "$2" == "--no-cache" ]]; then
             echo "Ignoring Docker cache..."
-            # Pass the official flag to the underlying CLI
             EXTRA_ARGS="--build-no-cache"
         fi
+
+        MY_MOUNTS=(--mount "type=bind,source=$HOME/dotfiles,target=/mnt/dotfiles")
+        if [ -n "$SSH_AUTH_SOCK" ]; then
+            # Removed ',readonly' to satisfy the strict CLI parser
+            MY_MOUNTS+=(--mount "type=bind,source=$SSH_AUTH_SOCK,target=/tmp/ssh-agent.socket")
+        fi
         
-        if devcontainer up --remove-existing-container $EXTRA_ARGS; then
+        # 2. Rebuild with mounts injected
+        if devcontainer up --remove-existing-container $EXTRA_ARGS "${MY_MOUNTS[@]}"; then
             echo "Rebuild complete! Launching tmux..."
-            tmux new-session -A -s dev-session "devcontainer exec zsh"
+            ensure_environment
+            tmux new-session -A -s dev-session "devcontainer exec bash -c 'if ! command -v zsh >/dev/null 2>&1; then ~/dotfiles/install-dev.sh; fi; exec zsh'"
         else
             echo "Failed to rebuild container."
         fi
@@ -86,17 +149,14 @@ case "$1" in
         else
             echo "Could not find .devcontainer/docker-compose.yml. Are you in the project root?"
         fi
-        ;;   
+        ;;
     shell)
         echo "Attaching to container shell..."
-        
-        # Check if we are already running inside a tmux session
+        ensure_environment
         if [ -n "$TMUX" ]; then
-            # Just drop directly into the container
-            devcontainer exec zsh
+            devcontainer exec bash -c 'if ! command -v zsh >/dev/null 2>&1; then ~/dotfiles/install-dev.sh; fi; exec zsh'
         else
-            # Not in tmux, so spin up the main dev-session
-            tmux new-session -A -s dev-session "devcontainer exec zsh"
+            tmux new-session -A -s dev-session "devcontainer exec bash -c 'if ! command -v zsh >/dev/null 2>&1; then ~/dotfiles/install-dev.sh; fi; exec zsh'"
         fi
         ;;
     logs)

@@ -3,4 +3,4 @@
     email = jirakorn.sukmee@gmail.com
 
 [includeIf "gitdir:/home/jirakorn/Documents/work/"]
-    path = /home/jirakorn/Documents/work/.gitconfig-work
+    path = /home/jirakorn/.gitconfig-work
