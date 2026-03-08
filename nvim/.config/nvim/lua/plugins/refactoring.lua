@@ -11,14 +11,16 @@ return {
     {
         "smjonas/inc-rename.nvim",
         cmd = "IncRename",
-        opts = {
-            input_buffer_type = "dressing", -- Use dressing.nvim for a nicer input
-        },
+        -- NOTE: Do NOT set input_buffer_type = "dressing" — it conflicts with noice.nvim
+        -- and causes <Enter> to be swallowed (preview shows but rename never commits)
+        opts = {},
         keys = {
             {
                 "<leader>rr",
                 function()
-                    return ":IncRename " .. vim.fn.expand("<cword>")
+                    -- Populate the command line with the current word so the user
+                    -- can edit the name inline. noice handles the display.
+                    return ":" .. "IncRename " .. vim.fn.expand("<cword>")
                 end,
                 expr = true,
                 desc = "Rename (inc-rename)",
