@@ -50,3 +50,19 @@ if vim.env.SSH_TTY or vim.env.WSL_DISTRO_NAME or vim.env.REMOTE_CONTAINERS then
     },
   }
 end
+
+-- Set default terminal shell instead of cmd.exe / sh
+if vim.fn.has("win32") == 1 then
+  vim.o.shell = vim.fn.executable("pwsh") == 1 and "pwsh" or "powershell"
+  vim.o.shellcmdflag = "-NoLogo -NoProfile -ExecutionPolicy RemoteSigned -Command [Console]::InputEncoding=[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$PSStyle.OutputRendering = [System.Management.Automation.OutputRendering]::PlainText;"
+  vim.o.shellredir = "2>&1 | Out-File -Encoding UTF8 %s; exit $LastExitCode"
+  vim.o.shellpipe = "2>&1 | Out-File -Encoding UTF8 %s; exit $LastExitCode"
+  vim.o.shellquote = ""
+  vim.o.shellxquote = ""
+else
+  if vim.fn.executable("zsh") == 1 then
+    vim.o.shell = "zsh"
+  elseif vim.fn.executable("bash") == 1 then
+    vim.o.shell = "bash"
+  end
+end

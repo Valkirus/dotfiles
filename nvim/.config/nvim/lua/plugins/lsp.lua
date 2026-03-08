@@ -8,9 +8,11 @@ return {
                 "eslint-lsp",
                 "prettier",
                 "clangd",
-                "pyright",
+                "basedpyright",
                 "ruff",
-                "codelldb", -- used for debugging C++ and Rust
+                "codelldb",        -- C++ / Rust debugger
+                "debugpy",         -- Python debugger (DAP)
+                "js-debug-adapter", -- Node.js / React debugger (DAP)
                 "dockerfile-language-server",
                 "docker-compose-language-service",
             })
@@ -22,7 +24,27 @@ return {
             servers = {
                 vtsls = {},
                 eslint = {},
-                pyright = {},
+                pyright = {
+                    -- We must explicitly disable pyright since the lazyvim python extra enables it by default
+                    mason = false,
+                    autostart = false,
+                },
+                basedpyright = {
+                    settings = {
+                        basedpyright = {
+                            analysis = {
+                                typeCheckingMode = "basic",  -- Much better defaults than Pyright
+                                autoSearchPaths = true,
+                                useLibraryCodeForTypes = true,
+                                extraPaths = { "." },
+                            },
+                        },
+                        python = {
+                            venvPath = ".",
+                            pythonPath = vim.fn.has("win32") == 1 and ".venv/Scripts/python.exe" or ".venv/bin/python",
+                        },
+                    },
+                },
                 ruff = {},
                 dockerls = {},
                 docker_compose_language_service = {},
