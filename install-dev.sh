@@ -13,21 +13,25 @@ if command -v apt-get >/dev/null 2>&1; then
     echo "Debian/Ubuntu detected."
     export DEBIAN_FRONTEND=noninteractive
     $SUDO apt-get update
-    $SUDO apt-get install -y curl wget git build-essential zsh ripgrep fd-find unzip tar stow
+    # Added: python3, python3-venv, python3-pip, nodejs, npm
+    $SUDO apt-get install -y curl wget git build-essential zsh ripgrep fd-find unzip tar stow python3 python3-venv python3-pip nodejs npm
     # Ubuntu/Debian use fdfind instead of fd, so we symlink it
     $SUDO ln -sf $(command -v fdfind) /usr/local/bin/fd || true
 
 elif command -v apk >/dev/null 2>&1; then
     echo "Alpine detected."
-    $SUDO apk add --no-cache curl wget git build-base zsh ripgrep fd unzip tar coreutils gcompat stow
+    # Added: python3, py3-pip, nodejs, npm
+    $SUDO apk add --no-cache curl wget git build-base zsh ripgrep fd unzip tar coreutils gcompat stow python3 py3-pip nodejs npm
 
 elif command -v dnf >/dev/null 2>&1; then
     echo "Fedora/RHEL detected."
-    $SUDO dnf install -y curl wget git gcc gcc-c++ zsh ripgrep fd-find unzip tar stow
+    # Added: python3, python3-pip, nodejs, npm
+    $SUDO dnf install -y curl wget git gcc gcc-c++ zsh ripgrep fd-find unzip tar stow python3 python3-pip nodejs npm
 
 elif command -v pacman >/dev/null 2>&1; then
     echo "Arch Linux detected."
-    $SUDO pacman -Sy --noconfirm curl wget git base-devel zsh ripgrep fd unzip tar stow
+    # Added: python, python-pip, nodejs, npm
+    $SUDO pacman -Sy --noconfirm curl wget git base-devel zsh ripgrep fd unzip tar stow python python-pip nodejs npm
 
 else
     echo "Unsupported package manager. Please manually install dependencies."
