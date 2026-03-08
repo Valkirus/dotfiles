@@ -1,0 +1,6 @@
+[user]
+    name = Jirakorn Sukmee
+    email = jirakorn.sukmee@gmail.com
+
+[includeIf "gitdir:/home/jirakorn/Documents/work/"]
+    path = /home/jirakorn/Documents/work/.gitconfig-work

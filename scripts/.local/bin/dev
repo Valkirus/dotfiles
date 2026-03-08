@@ -1,0 +1,111 @@
+#!/usr/bin/env zsh
+
+# ==============================================================================
+# DEV CONTAINER CLI
+# ==============================================================================
+
+show_help() {
+    echo "Dev Container CLI"
+    echo ""
+    echo "Usage: dev <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  up                  Start the container and attach via tmux"
+    echo "  rebuild             Rebuild the container and attach"
+    echo "  rebuild --no-cache  Rebuild completely from scratch (ignores Docker cache)"
+    echo "  down                Tear down the current workspace container"
+    echo "  stop             Stop ALL running Docker containers on the host"
+    echo "  shell               Drop into the running container shell"
+    echo "  logs                Tail the logs of the dev container"
+    echo ""
+}
+
+case "$1" in
+    up)
+        echo "Starting dev container..."
+        if devcontainer up; then
+            echo "Container started! Launching tmux..."
+            tmux new-session -A -s dev-session "devcontainer exec zsh"
+        else
+            echo "Failed to start container."
+        fi
+        ;;
+        
+    rebuild)
+        echo "Rebuilding dev container..."
+        EXTRA_ARGS=""
+        
+        # Check for the --no-cache flag
+        if [[ "$2" == "--no-cache" ]]; then
+            echo "Ignoring Docker cache..."
+            # Pass the official flag to the underlying CLI
+            EXTRA_ARGS="--build-no-cache"
+        fi
+        
+        if devcontainer up --remove-existing-container $EXTRA_ARGS; then
+            echo "Rebuild complete! Launching tmux..."
+            tmux new-session -A -s dev-session "devcontainer exec zsh"
+        else
+            echo "Failed to rebuild container."
+        fi
+        ;;
+    down)
+        echo "Tearing down the dev container..."
+        
+        # Kill the tmux session so it doesn't leave a ghost process
+        if tmux has-session -t dev-session 2>/dev/null; then
+            tmux kill-session -t dev-session
+        fi
+        
+        if [ -f ".devcontainer/docker-compose.yml" ]; then
+            # Dev Containers automatically name the Docker Compose project: <folder-name>_devcontainer
+            PROJECT_NAME="$(basename "$PWD")_devcontainer"
+            
+            echo "Targeting project: $PROJECT_NAME..."
+            docker compose --project-name "$PROJECT_NAME" -f .devcontainer/docker-compose.yml down
+            echo "Teardown complete."
+        else
+            echo "Could not find .devcontainer/docker-compose.yml. Are you in the project root?"
+        fi
+        ;;
+    stop)
+        echo "Stopping the dev container..."
+        
+        # Kill the tmux session so it doesn't leave a ghost process
+        if tmux has-session -t dev-session 2>/dev/null; then
+            tmux kill-session -t dev-session
+        fi
+        
+        if [ -f ".devcontainer/docker-compose.yml" ]; then
+            # Target the specific devcontainer project
+            PROJECT_NAME="$(basename "$PWD")_devcontainer"
+            
+            echo "Targeting project: $PROJECT_NAME..."
+            docker compose --project-name "$PROJECT_NAME" -f .devcontainer/docker-compose.yml stop
+            echo "Containers successfully paused."
+        else
+            echo "Could not find .devcontainer/docker-compose.yml. Are you in the project root?"
+        fi
+        ;;   
+    shell)
+        echo "Attaching to container shell..."
+        
+        # Check if we are already running inside a tmux session
+        if [ -n "$TMUX" ]; then
+            # Just drop directly into the container
+            devcontainer exec zsh
+        else
+            # Not in tmux, so spin up the main dev-session
+            tmux new-session -A -s dev-session "devcontainer exec zsh"
+        fi
+        ;;
+    logs)
+        echo "Tailing container logs (Ctrl+C to exit)..."
+        docker compose -f .devcontainer/docker-compose.yml logs -f
+        ;;
+        
+    *)
+        show_help
+        ;;
+        
+esac
