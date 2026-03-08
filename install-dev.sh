@@ -53,8 +53,12 @@ echo "=== Installing Starship ==="
 curl -sS https://starship.rs/install.sh | sh -s -- --yes
 
 echo "=== Stowing Configurations ==="
-# Ensure we are in the dotfiles directory before stowing
 cd "$(dirname "$0")" || exit
+
+# Prevent Stow directory folding by creating the base directories first!
+mkdir -p "$HOME/.local/bin"
+mkdir -p "$HOME/.config"
+
 stow -v -t ~ nvim scripts zsh-dev git-dev
 
 echo "=== Setting Zsh as default shell ==="
