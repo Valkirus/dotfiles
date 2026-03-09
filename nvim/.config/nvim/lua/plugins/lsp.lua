@@ -10,9 +10,6 @@ return {
                 "clangd",
                 "basedpyright",
                 "ruff",
-                "codelldb",        -- C++ / Rust debugger
-                "debugpy",         -- Python debugger (DAP)
-                "js-debug-adapter", -- Node.js / React debugger (DAP)
                 "dockerfile-language-server",
                 "docker-compose-language-service",
             })

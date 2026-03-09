@@ -19,7 +19,7 @@ return {
             { "<leader>ue", "<cmd>lua require('edgy').toggle()<cr>", desc = "Toggle Edgy Layout" },
         },
         opts = {
-            -- Bottom panel: Terminal, Test output, Trouble, DAP REPL
+            -- Bottom panel: Terminal, Trouble
             bottom = {
                 {
                     ft = "toggleterm",
@@ -32,9 +32,6 @@ return {
                     filter = function(_, win) return vim.api.nvim_win_get_config(win).relative == "" end,
                 },
                 { ft = "lazyterm",  title = "Terminal",  size = { height = 0.3 }, filter = function(buf) return not vim.b[buf].lazyterm_cmd end },
-                { ft = "dap-repl",  title = "DAP REPL",  size = { height = 0.3 } },
-                { ft = "dapui_console", title = "DAP Console", size = { height = 0.3 } },
-                { ft = "neotest-output-panel", title = "Test Output", size = { height = 0.3 } },
                 {
                     ft = "trouble",
                     filter = function(_, win) return vim.w[win].trouble and vim.w[win].trouble.mode == "diagnostics" end,
@@ -53,25 +50,13 @@ return {
                 },
             },
 
-            -- Left panel: File Explorer + Neotest summary
+            -- Left panel: File Explorer
             left = {
                 {
                     title = "Explorer",
                     ft = "neo-tree",
                     filter = function(buf) return vim.b[buf].neo_tree_source == "filesystem" end,
                     size = { height = 0.6 },
-                },
-                {
-                    title = "Source Control",
-                    ft = "neo-tree",
-                    filter = function(buf) return vim.b[buf].neo_tree_source == "git_status" end,
-                    pinned = true,
-                    open = "Neotree position=right git_status",
-                },
-                {
-                    title = "Test Explorer",
-                    ft = "neotest-summary",
-                    size = { height = 0.4 },
                 },
             },
 
@@ -82,14 +67,6 @@ return {
                     ft = "aerial",
                     size = { width = 0.2 },
                 },
-                {
-                    ft = "dapui_scopes",   title = "Scopes",      size = { width = 0.2 } },
-                {
-                    ft = "dapui_breakpoints", title = "Breakpoints", size = { width = 0.2 } },
-                {
-                    ft = "dapui_stacks",   title = "Call Stack",  size = { width = 0.2 } },
-                {
-                    ft = "dapui_watches",  title = "Watches",     size = { width = 0.2 } },
             },
 
             -- Appearance
@@ -158,20 +135,12 @@ return {
                 return ""
             end
 
-            -- Add DAP status indicator
-            local function dap_status()
-                local ok, dap = pcall(require, "dap")
-                if not ok then return "" end
-                return dap.status() ~= "" and ("🐛 " .. dap.status()) or ""
-            end
-
             opts.sections = opts.sections or {}
             opts.sections.lualine_x = opts.sections.lualine_x or {}
 
             -- Prepend our custom components
             table.insert(opts.sections.lualine_x, 1, { macro_recording, color = { fg = "#f38ba8" } })
             table.insert(opts.sections.lualine_x, 2, { overseer_status })
-            table.insert(opts.sections.lualine_x, 3, { dap_status, color = { fg = "#89b4fa" } })
 
             return opts
         end,
